@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal Pro & Analyzer Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-input: #21262d;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #2ea44f;
+            --accent-red: #da3633;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: var(--accent-blue);
+        }
+
+        .nav-tabs {
+            display: flex;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 15px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--accent-blue);
+            border-bottom: 2px solid var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: var(--accent-blue);
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-main);
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-success { background-color: var(--accent-green); }
+        .btn-danger { background-color: var(--accent-red); }
+
+        canvas {
+            max-width: 100%;
+            border: 1px solid var(--border-color);
+            background-color: #000;
+            border-radius: 4px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .badge-100 { background-color: #00e676; color: #000; }
+        .badge-70 { background-color: #ffeb3b; color: #000; }
+        .badge-danger { background-color: #ff5252; color: #fff; }
+
+        .checklist-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-input);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .check-item input[type="checkbox"] { width: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: left;
+        }
+
+        th { background-color: var(--bg-input); color: var(--accent-blue); }
+        .row-buy { color: #00e676; font-weight: bold; }
+        .row-sell { color: #ff5252; font-weight: bold; }
+        .outcome-win { background-color: rgba(0, 230, 118, 0.15); color: #00e676; text-align: center; font-weight: bold;}
+        .outcome-loss { background-color: rgba(255, 82, 82, 0.15); color: #ff5252; text-align: center; font-weight: bold;}
+        .outcome-be { background-color: rgba(210, 153, 34, 0.15); color: #ffeb3b; text-align: center; font-weight: bold;}
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .widget {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .widget .title { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
+        .widget .value { font-size: 1.8rem; font-weight: bold; }
+        .widget .value.green { color: #00e676; }
+        .widget .value.red { color: #ff5252; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📊 Trading Journal Pro & Analyzer Suite</h1>
+    <div style="font-size: 0.85rem; color: var(--text-muted);" id="liveClock"></div>
+</header>
+
+<div class="nav-tabs">
+    <button id="btn-journal" class="tab-btn active" onclick="switchTab('journal')">📝 Entry Journal & Image Analyzer</button>
+    <button id="btn-logs" class="tab-btn" onclick="switchTab('logs')">📈 Trading Log Data</button>
+    <button id="btn-analytics" class="tab-btn" onclick="switchTab('analytics')">📊 Live Analytics & Performance</button>
+</div>
+
+<div class="container">
+
+    <div id="journal" class="tab-content active">
+        <div class="grid-2">
+            <div>
+                <div class="card">
+                    <h2>1. Detail Form Transaksi</h2>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Waktu Entry</label>
+                            <input type="datetime-local" id="tradeTime">
+                        </div>
+                        <div class="form-group">
+                            <label>Pair / Asset Symbol (Input Manual)</label>
+                            <input type="text" id="tradePair" placeholder="Contoh: SOLUSDT, GBPUSD, EURJPY" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Posisi Aksi</label>
+                            <select id="tradePosition">
+                                <option value="BUY">BUY</option>
+                                <option value="SELL">SELL</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Hasil Perolehan (R-Multiple / RR)</label>
+                            <input type="number" id="tradeRR" step="0.01" placeholder="Contoh: 3.5 atau -1.0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Catatan Analisa</label>
+                        <textarea id="tradeNotes" rows="3" placeholder="Masukkan catatan psikologi atau alasan teknik entry..."></textarea>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>2. Aturan Checklist Konfirmasi</h2>
+                    <div class="checklist-grid">
+                        <div class="check-item"><input type="checkbox" id="chk1" checked><label for="chk1">Sesuai Tren H4</label></div>
+                        <div class="check-item"><input type="checkbox" id="chk2" checked><label for="chk2">Ada Choch / BMS</label></div>
+                        <div class="check-item"><input type="checkbox" id="chk3"><label for="chk3">Area Fresh S&D</label></div>
+                        <div class="check-item"><input type="checkbox" id="chk4" checked><label for="chk4">RR Minimal 1:2</label></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2>3. Pemrosesan Piksel Gambar Chart (RGB)</h2>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Chart H4 (S&R)</label>
+                            <input type="file" id="imgH4" accept="image/*" onchange="previewFile('imgH4', 'canvasH4')">
+                        </div>
+                        <div class="form-group">
+                            <label>Zona S&D</label>
+                            <input type="file" id="imgSD" accept="image/*" onchange="previewFile('imgSD', 'canvasSD')">
+                        </div>
+                    </div>
+                    <button class="btn btn-success" style="width: 100%;" onclick="runRGBProcessing()">Jalankan Analisis Gambar & Hitung Skor</button>
+
+                    <div class="grid-2" style="margin-top: 15px;">
+                        <canvas id="canvasH4" width="200" height="120"></canvas>
+                        <canvas id="canvasSD" width="200" height="120"></canvas>
+                    </div>
+
+                    <div style="background: var(--bg-dark); padding: 15px; border-radius: 6px; margin-top: 15px; border: 1px solid var(--border-color);">
+                        <div>Skor Validasi Fuzzy: <span id="fuzzyScoreText" style="font-weight:bold; color:var(--accent-blue)">0%</span></div>
+                        <div id="fuzzyRecommendation" class="badge badge-danger">Harap Jalankan Analisis Gambar</div>
+                    </div>
+                </div>
+                <button class="btn" style="width: 100%; padding: 15px; font-size: 1.1rem;" onclick="addNewTrade()">💾 Simpan Ke Dalam Log & Sinkronisasi</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logs" class="tab-content">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>📋 Buku Log Transaksi Real-Time</h2>
+                <button class="btn btn-success" onclick="exportToExcel()">📥 Download File Excel (.xlsx)</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="logTable">
+                    <thead>
+                        <tr>
+                            <th>NO</th>
+                            <th>WAKTU ENTRY</th>
+                            <th>PAIR</th>
+                            <th>POSISI ENTRY</th>
+                            <th>HASIL (RR)</th>
+                            <th>OUTCOME</th>
+                            <th>CUM. RR</th>
+                            <th>VALIDATION SKOR</th>
+                            <th>NOTES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="analytics" class="tab-content">
+        <div class="analytics-grid">
+            <div class="widget"><div class="title">Win Rate (%)</div><div class="value green" id="statWinRate">0.00%</div></div>
+            <div class="widget"><div class="title">Total Trades</div><div class="value" id="statTotalTrades">0</div></div>
+            <div class="widget"><div class="title">Total Wins 🏆</div><div class="value green" id="statTotalWins">0</div></div>
+            <div class="widget"><div class="title">Total Losses ❌</div><div class="value red" id="statTotalLosses">0</div></div>
+            <div class="widget"><div class="title">Net RR Accumulation</div><div class="value" id="statNetRR" style="color:var(--accent-blue)">0.00</div></div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2>📈 Kinerja Berdasarkan Asset Pair (Dinamis)</h2>
+                <table>
+                    <thead>
+                        <tr><th>PAIR</th><th>TRADES</th><th>WINS</th><th>LOSSES</th><th>WIN RATE</th><th>NET RR</th></tr>
+                    </thead>
+                    <tbody id="pairStatsTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>🏆 Rekor Streak Beruntun (Analisa Excel)</h2>
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-color); display:flex; justify-content: space-between;">
+                    <span>Maksimal Win Streak:</span><strong id="streakMaxWin" style="color:#00e676">0</strong>
+                </div>
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-color); display:flex; justify-content: space-between;">
+                    <span>Maksimal Loss Streak:</span><strong id="streakMaxLoss" style="color:#ff5252">0</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Data mentah historis awal bawaan template Excel
+    let defaultTradingLogs = [
+        { id: 1, time: "2026-05-21 13:17", pair: "GBPJPY", position: "BUY", rr: -2.00, outcome: "LOSS", score: "75%", notes: "Aku cut loss karena ada break resistance" },
+        { id: 2, time: "2026-05-22 01:21", pair: "GBPJPY", position: "BUY", rr: 1.65, outcome: "WIN", score: "100%", notes: "Target hit parsial" },
+        { id: 3, time: "2026-05-23 01:34", pair: "BTCUSDT", position: "SELL", rr: 7.65, outcome: "WIN", score: "70%", notes: "Squeeze momentum mantap" },
+        { id: 4, time: "2026-05-25 18:37", pair: "GBPUSD", position: "SELL", rr: 3.22, outcome: "WIN", score: "100%", notes: "Cut profit manual" },
+        { id: 5, time: "2026-05-28 04:47", pair: "BNBUSDT", position: "BUY", rr: -2.61, outcome: "LOSS", score: "45%", notes: "Kena fakeout palsu" }
+    ];
+
+    let tradingLogs = JSON.parse(localStorage.getItem("trading_logs_suite")) || defaultTradingLogs;
+    let computedFuzzyScore = 0;
+
+    // Fungsi navigasi tab yang diperbaiki total agar aman di Chrome lokal
+    function switchTab(tabId) {
+        // Sembunyikan semua tab content
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        // Hapus kelas aktif dari semua tombol
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        // Tampilkan tab yang dipilih
+        document.getElementById(tabId).style.display = 'block';
+        
+        // Tambah kelas aktif ke tombol yang sesuai
+        if (tabId === 'journal') document.getElementById('btn-journal').classList.add('active');
+        if (tabId === 'logs') document.getElementById('btn-logs').classList.add('active');
+        if (tabId === 'analytics') document.getElementById('btn-analytics').classList.add('active');
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Set waktu default di form input
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('tradeTime').value = now.toISOString().slice(0, 16);
+        
+        // Jalankan jam live
+        setInterval(() => { 
+            document.getElementById('liveClock').innerText = new Date().toLocaleString('id-ID') + ' WIB'; 
+        }, 1000);
+
+        // Paksa render data saat halaman pertama kali dibuka
+        renderAll();
+        // Set tampilan awal tab
+        switchTab('journal');
+    });
+
+    function previewFile(inputId, canvasId) {
+        const file = document.getElementById(inputId).files[0];
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }
+            img.src = e.target.result;
+        }
+        if(file) reader.readAsDataURL(file);
+    }
+
+    function runRGBProcessing() {
+        const canvasH4 = document.getElementById('canvasH4');
+        const canvasSD = document.getElementById('canvasSD');
+        
+        const ctxH4 = canvasH4.getContext('2d');
+        const imgH4Data = ctxH4.getImageData(0, 0, canvasH4.width, canvasH4.height);
+        let h4Pixels = imgH4Data.data;
+
+        let rowDensities = new Array(canvasH4.height).fill(0);
+        for(let y=0; y<canvasH4.height; y++) {
+            for(let x=0; x<canvasH4.width; x++) {
+                let idx = (y * canvasH4.width + x) * 4;
+                if(h4Pixels[idx] > 50) rowDensities[y]++;
+            }
+        }
+        let maxH4Density = Math.max(...rowDensities);
+        let calculatedSRScore = maxH4Density > 0 ? Math.min((maxH4Density / canvasH4.width) * 100, 100) : 50;
+
+        const ctxSD = canvasSD.getContext('2d');
+        const imgSDData = ctxSD.getImageData(0, 0, canvasSD.width, canvasSD.height);
+        let sdPixels = imgSDData.data;
+
+        let totalZone = 0, hitZone = 0;
+        for(let i=0; i<sdPixels.length; i+=4) {
+            let r = sdPixels[i], g = sdPixels[i+1];
+            if(r > 40 && g > 40) {
+                totalZone++;
+                if(Math.abs(r - g) > 15) hitZone++;
+            }
+        }
+        let mitigationRate = totalZone > 0 ? (hitZone / totalZone) : 0;
+        let calculatedFreshness = Math.max(0, 100 - (mitigationRate * 200));
+
+        computedFuzzyScore = Math.min(100, Math.max(0, Math.round((calculatedSRScore * 0.4) + (calculatedFreshness * 0.6))));
+
+        document.getElementById('fuzzyScoreText').innerText = computedFuzzyScore + "%";
+        const recBadge = document.getElementById('fuzzyRecommendation');
+        if (computedFuzzyScore === 100) {
+            recBadge.className = "badge badge-100"; recBadge.innerText = "Entry dengan limit order dengan risk 1% - 2%";
+        } else if (computedFuzzyScore >= 70) {
+            recBadge.className = "badge badge-70"; recBadge.innerText = "Entry aman, tetapi harus tunggu konfirmasi";
+        } else {
+            recBadge.className = "badge badge-danger"; recBadge.innerText = "Berbahaya, tunggu set up lain";
+        }
+    }
+
+    function addNewTrade() {
+        const timeInput = document.getElementById('tradeTime').value.replace('T', ' ');
+        const pairInput = document.getElementById('tradePair').value.trim().toUpperCase();
+        const position = document.getElementById('tradePosition').value;
+        const rrValue = parseFloat(document.getElementById('tradeRR').value);
+        const notes = document.getElementById('tradeNotes').value || "-";
+
+        if(!pairInput) { alert("Harap isi nama Pair secara manual!"); return; }
+        if(isNaN(rrValue)) { alert("Harap isi nilai RR!"); return; }
+
+        let outcome = rrValue > 0 ? "WIN" : (rrValue < 0 ? "LOSS" : "BE");
+
+        tradingLogs.push({
+            id: tradingLogs.length + 1,
+            time: timeInput,
+            pair: pairInput,
+            position: position,
+            rr: rrValue,
+            outcome: outcome,
+            score: computedFuzzyScore > 0 ? computedFuzzyScore + "%" : "100%",
+            notes: notes
+        });
+
+        localStorage.setItem("trading_logs_suite", JSON.stringify(tradingLogs));
+        renderAll();
+        
+        document.getElementById('tradePair').value = "";
+        document.getElementById('tradeRR').value = "";
+        document.getElementById('tradeNotes').value = "";
+        alert("Sukses menambah data trade!");
+    }
+
+    function renderAll() {
+        const tbody = document.getElementById('logTableBody');
+        if(!tbody) return;
+        tbody.innerHTML = "";
+        
+        let cumulativeRR = 0, winCount = 0, lossCount = 0;
+        let pairData = {};
+
+        tradingLogs.forEach((log) => {
+            cumulativeRR += log.rr;
+            if(log.outcome === "WIN") winCount++;
+            if(log.outcome === "LOSS") lossCount++;
+
+            if(!pairData[log.pair]) {
+                pairData[log.pair] = { t: 0, w: 0, l: 0, rr: 0 };
+            }
+            pairData[log.pair].t++;
+            if(log.outcome === "WIN") pairData[log.pair].w++;
+            if(log.outcome === "LOSS") pairData[log.pair].l++;
+            pairData[log.pair].rr += log.rr;
+
+            let posClass = log.position === "BUY" ? "row-buy" : "row-sell";
+            let outClass = log.outcome === "WIN" ? "outcome-win" : (log.outcome === "LOSS" ? "outcome-loss" : "outcome-be");
+
+            tbody.innerHTML += `<tr>
+                <td>${log.id}</td><td>${log.time}</td><td><strong>${log.pair}</strong></td>
+                <td class="${posClass}">${log.position}</td><td>${log.rr.toFixed(2)}</td>
+                <td class="${outClass}">${log.outcome}</td><td><strong>${cumulativeRR.toFixed(2)}</strong></td>
+                <td style="color:var(--accent-blue); text-align:center;">${log.score}</td><td>${log.notes}</td>
+            </tr>`;
+        });
+
+        // Update bagian widget Analytics
+        document.getElementById('statTotalTrades').innerText = tradingLogs.length;
+        document.getElementById('statTotalWins').innerText = winCount;
+        document.getElementById('statTotalLosses').innerText = lossCount;
+        document.getElementById('statWinRate').innerText = (tradingLogs.length > 0 ? (winCount / tradingLogs.length * 100) : 0).toFixed(2) + "%";
+        document.getElementById('statNetRR').innerText = cumulativeRR.toFixed(2);
+
+        // Render tabel performa pair secara dinamis
+        const pairTbody = document.getElementById('pairStatsTableBody');
+        if(pairTbody) {
+            pairTbody.innerHTML = "";
+            for(let p in pairData) {
+                let wr = pairData[p].t > 0 ? (pairData[p].w / pairData[p].t * 100).toFixed(1) + "%" : "0.0%";
+                pairTbody.innerHTML += `<tr>
+                    <td><strong>${p}</strong></td>
+                    <td>${pairData[p].t}</td>
+                    <td style="color:#00e676">${pairData[p].w}</td>
+                    <td style="color:#ff5252">${pairData[p].l}</td>
+                    <td>${wr}</td>
+                    <td style="font-weight:bold">${pairData[p].rr.toFixed(2)}</td>
+                </tr>`;
+            }
+        }
+
+        // Kalkulasi rekor beruntun (Streak)
+        let maxWin = 0, maxLoss = 0, cWin = 0, cLoss = 0;
+        tradingLogs.forEach(l => {
+            if(l.outcome === "WIN") { cWin++; cLoss = 0; if(cWin > maxWin) maxWin = cWin; }
+            else if(l.outcome === "LOSS") { cLoss++; cWin = 0; if(cLoss > maxLoss) maxLoss = cLoss; }
+        });
+        document.getElementById('streakMaxWin').innerText = maxWin;
+        document.getElementById('streakMaxLoss').innerText = maxLoss;
+    }
+
+    function exportToExcel() {
+        let excelRowsLog = [["NO", "WAKTU ENTRY", "PAIR", "POSISI ENTRY", "HASIL (RR)", "OUTCOME", "CUM. RR", "VALIDATION FUZZY", "NOTES"]];
+        let runningCum = 0;
+        tradingLogs.forEach((log, idx) => {
+            runningCum += log.rr;
+            excelRowsLog.push([idx+1, log.time, log.pair, log.position, log.rr, log.outcome, parseFloat(runningCum.toFixed(2)), log.score, log.notes]);
+        });
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(excelRowsLog), "Trading Log");
+        XLSX.writeFile(wb, "Trading_Log_Suite_Integrated.xlsx");
+    }
+</script>
+</body>
+</html>
